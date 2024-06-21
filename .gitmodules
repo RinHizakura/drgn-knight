@@ -1,0 +1,3 @@
+[submodule "drgn"]
+	path = drgn
+	url = git@github.com:osandov/drgn.git
