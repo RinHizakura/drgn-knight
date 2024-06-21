@@ -2,8 +2,8 @@
 #include <stdlib.h>
 
 #include "drgn.h"
-#include "util.h"
 #include "helpers.h"
+#include "util.h"
 
 int main()
 {
@@ -18,14 +18,19 @@ int main()
     if (err)
         goto out;
 
-    err = drgn_program_load_debug_info(prog, NULL, 0, core, false);
-    if (err)
+    err = drgn_program_load_debug_info(prog, NULL, 0, true, false);
+    if (err && err->code == DRGN_ERROR_MISSING_DEBUG_INFO) {
+        drgn_error_fwrite(stderr, err);
+        drgn_error_destroy(err);
+    } else if (err) {
         goto out;
+    }
 
     struct drgn_object object;
     drgn_object_init(&object, prog);
 
-    err = drgn_program_find_object(prog, "init_pid_ns", NULL, DRGN_FIND_OBJECT_VARIABLE, &object);
+    err = drgn_program_find_object(prog, "init_pid_ns", NULL,
+                                   DRGN_FIND_OBJECT_VARIABLE, &object);
     if (err)
         goto obj_out;
 
