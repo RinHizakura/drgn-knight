@@ -1,5 +1,5 @@
-#ifndef KNIGHT
-#define KNIGHT
+#ifndef KNIGHT_H
+#define KNIGHT_H
 
 #include <stdint.h>
 

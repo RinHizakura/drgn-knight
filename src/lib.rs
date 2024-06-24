@@ -1,14 +1,36 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
+use std::ffi::c_void;
+
+#[link(name = "drgnimpl", kind = "static")]
+extern "C" {
+    fn program_create() -> *const c_void;
+    fn find_task_member(prog: *const c_void, pid: u64);
+    fn program_destroy(prog: *const c_void);
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub struct Program {
+    prog: *const c_void,
+}
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+impl Program {
+    pub fn new() -> Self {
+        let prog =  unsafe { program_create() };
+
+        assert!(!prog.is_null());
+
+        Program {
+            prog,
+        }
+    }
+
+    pub fn find_task_member(&self, pid: u64) {
+        unsafe { find_task_member(self.prog, pid)}
     }
 }
+
+impl Drop for Program {
+    fn drop(&mut self) {
+        unsafe { program_destroy(self.prog); }
+    }
+}
+
+
