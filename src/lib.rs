@@ -13,24 +13,22 @@ pub struct Program {
 
 impl Program {
     pub fn new() -> Self {
-        let prog =  unsafe { program_create() };
+        let prog = unsafe { program_create() };
 
         assert!(!prog.is_null());
 
-        Program {
-            prog,
-        }
+        Program { prog }
     }
 
     pub fn find_task_member(&self, pid: u64) {
-        unsafe { find_task_member(self.prog, pid)}
+        unsafe { find_task_member(self.prog, pid) }
     }
 }
 
 impl Drop for Program {
     fn drop(&mut self) {
-        unsafe { program_destroy(self.prog); }
+        unsafe {
+            program_destroy(self.prog);
+        }
     }
 }
-
-
