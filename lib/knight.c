@@ -1,12 +1,14 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "drgn.h"
 #include "helpers.h"
 #include "knight.h"
-static struct drgn_error *find_task(struct drgn_program *prog,
-                                    uint64_t pid,
-                                    struct drgn_object *ret_task);
+
+static struct drgn_error *__find_task(struct drgn_program *prog,
+                                      uint64_t pid,
+                                      struct drgn_object *ret_task);
 
 prog_t *program_create()
 {
@@ -56,9 +58,9 @@ void program_destroy(prog_t *p)
     free(p);
 }
 
-static struct drgn_error *find_task(struct drgn_program *prog,
-                                    uint64_t pid,
-                                    struct drgn_object *ret_task)
+static struct drgn_error *__find_task(struct drgn_program *prog,
+                                      uint64_t pid,
+                                      struct drgn_object *ret_task)
 {
     struct drgn_error *err = NULL;
     DRGN_OBJECT(object, prog);
@@ -79,32 +81,66 @@ static struct drgn_error *find_task(struct drgn_program *prog,
     return err;
 }
 
-void find_task_member(prog_t *p, uint64_t pid)
+struct drgn_object *find_task(prog_t *p, uint64_t pid)
 {
+    static struct drgn_object task;
+
     struct drgn_program *prog = p->prog;
     struct drgn_error *err = NULL;
-    DRGN_OBJECT(task, prog);
-    DRGN_OBJECT(member, prog);
 
-    err = find_task(prog, pid, &task);
+    drgn_object_init(&task, prog);
+
+    err = __find_task(prog, pid, &task);
     if (err)
         goto find_task_err;
-
-    err = drgn_object_member_dereference(&member, &task, "on_cpu");
-    if (err)
-        goto find_task_err;
-
-    bool on_cpu;
-    err = drgn_object_bool(&member, &on_cpu);
-    if (err)
-        goto find_task_err;
-
-    printf("on_cpu %d\n", on_cpu);
 
 find_task_err:
     if (err) {
         drgn_error_fwrite(stderr, err);
         drgn_error_destroy(err);
+        drgn_object_deinit(&task);
+        return NULL;
     }
-    return;
+
+    return &task;
+}
+
+bool find_task_member(prog_t *p, struct drgn_object *task, char *name)
+{
+    bool ret = true;
+    struct drgn_error *err = NULL;
+    DRGN_OBJECT(member, p->prog);
+
+    bool bool_out;
+    union drgn_value v_out;
+
+    err = drgn_object_member_dereference(&member, task, name);
+    if (err)
+        goto find_task_err;
+
+    switch (drgn_type_kind(member.type)) {
+    case DRGN_TYPE_INT:
+        err = drgn_object_read_integer(&member, &v_out);
+        if (err)
+            goto find_task_err;
+        printf("%s %lx\n", name, v_out.uvalue);
+        break;
+    case DRGN_TYPE_BOOL:
+        err = drgn_object_bool(&member, &bool_out);
+        if (err)
+            goto find_task_err;
+        printf("%s %d\n", name, bool_out);
+        break;
+    default:
+        ret = false;
+        break;
+    }
+
+find_task_err:
+    if (err) {
+        ret = false;
+        drgn_error_fwrite(stderr, err);
+        drgn_error_destroy(err);
+    }
+    return ret;
 }

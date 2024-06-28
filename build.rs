@@ -17,6 +17,8 @@ fn main() {
     println!("cargo:rustc-link-lib=dw");
     println!("cargo:rustc-link-lib=elf");
 
+    println!("cargo:rerun-if-changed=lib/knight.c");
+
     cc::Build::new()
         .file("lib/knight.c")
         .include("drgn/libdrgn")
