@@ -1,8 +1,6 @@
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "drgn.h"
 #include "helpers.h"
 #include "knight.h"
 
@@ -58,6 +56,21 @@ void program_destroy(prog_t *p)
     free(p);
 }
 
+static struct drgn_object *object_alloc(struct drgn_program *prog)
+{
+    struct drgn_object *obj = malloc(sizeof(struct drgn_object));
+
+    drgn_object_init(obj, prog);
+
+    return obj;
+}
+
+void object_free(struct drgn_object *obj)
+{
+    drgn_object_deinit(obj);
+    free(obj);
+}
+
 static struct drgn_error *__find_task(struct drgn_program *prog,
                                       uint64_t pid,
                                       struct drgn_object *ret_task)
@@ -83,64 +96,57 @@ static struct drgn_error *__find_task(struct drgn_program *prog,
 
 struct drgn_object *find_task(prog_t *p, uint64_t pid)
 {
-    static struct drgn_object task;
-
     struct drgn_program *prog = p->prog;
+    struct drgn_object *task = object_alloc(prog);
     struct drgn_error *err = NULL;
 
-    drgn_object_init(&task, prog);
-
-    err = __find_task(prog, pid, &task);
-    if (err)
-        goto find_task_err;
-
-find_task_err:
+    err = __find_task(prog, pid, task);
     if (err) {
         drgn_error_fwrite(stderr, err);
         drgn_error_destroy(err);
-        drgn_object_deinit(&task);
+        object_free(task);
         return NULL;
     }
 
-    return &task;
+    return task;
 }
 
-bool find_task_member(prog_t *p, struct drgn_object *task, char *name)
+struct drgn_object *deref_obj_member(prog_t *p,
+                                     struct drgn_object *obj,
+                                     char *name)
 {
-    bool ret = true;
+    struct drgn_program *prog = p->prog;
+    struct drgn_object *member = object_alloc(prog);
     struct drgn_error *err = NULL;
-    DRGN_OBJECT(member, p->prog);
 
-    bool bool_out;
-    union drgn_value v_out;
-
-    err = drgn_object_member_dereference(&member, task, name);
-    if (err)
-        goto find_task_err;
-
-    switch (drgn_type_kind(member.type)) {
-    case DRGN_TYPE_INT:
-        err = drgn_object_read_integer(&member, &v_out);
-        if (err)
-            goto find_task_err;
-        printf("%s %lx\n", name, v_out.uvalue);
-        break;
-    case DRGN_TYPE_BOOL:
-        err = drgn_object_bool(&member, &bool_out);
-        if (err)
-            goto find_task_err;
-        printf("%s %d\n", name, bool_out);
-        break;
-    default:
-        ret = false;
-        break;
-    }
-
-find_task_err:
+    err = drgn_object_member_dereference(member, obj, name);
     if (err) {
-        ret = false;
         drgn_error_fwrite(stderr, err);
         drgn_error_destroy(err);
+        object_free(member);
+        return NULL;
     }
-    return ret;
+
+    return member;
+}
+
+bool obj2num(struct drgn_object *obj, uint64_t *out)
+{
+    struct drgn_error *err = NULL;
+
+    union drgn_value value_mem;
+    const union drgn_value *value;
+    err = drgn_object_read_value(obj, &value_mem, &value);
+    if (err) {
+        drgn_error_fwrite(stderr, err);
+        drgn_error_destroy(err);
+        drgn_object_deinit_value(obj, value);
+        return false;
+    }
+
+    // Ignore sign of interger
+    *out = value->uvalue;
+
+    drgn_object_deinit_value(obj, value);
+    return true;
 }

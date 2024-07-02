@@ -3,9 +3,15 @@ use std::ffi::{c_char, c_void, CString};
 #[link(name = "drgnimpl", kind = "static")]
 extern "C" {
     fn program_create() -> *const c_void;
-    fn find_task(prog: *const c_void, pid: u64) -> *const c_void;
-    fn find_task_member(prog: *const c_void, task: *const c_void, member: *const c_char) -> bool;
     fn program_destroy(prog: *const c_void);
+    fn object_free(obj: *const c_void);
+    fn find_task(prog: *const c_void, pid: u64) -> *const c_void;
+    fn deref_obj_member(
+        prog: *const c_void,
+        obj: *const c_void,
+        name: *const c_char,
+    ) -> *const c_void;
+    fn obj2num(obj: *const c_void, out: *const u64) -> bool;
 }
 
 pub struct Program {
@@ -34,6 +40,8 @@ impl Drop for Program {
     }
 }
 
+type Result<T> = std::result::Result<T, ()>;
+
 pub struct Object {
     prog: *const c_void,
     object: *const c_void,
@@ -44,8 +52,35 @@ impl Object {
         Object { prog, object }
     }
 
-    pub fn find_member(&self, member: String) {
+    pub fn deref_member(&self, member: String) -> Result<Object> {
         let member_cstr = CString::new(member).unwrap();
-        unsafe { find_task_member(self.prog, self.object, member_cstr.as_ptr()) };
+        let out = unsafe { deref_obj_member(self.prog, self.object, member_cstr.as_ptr()) };
+
+        if out.is_null() {
+            return Err(());
+        }
+
+        Ok(Object {
+            prog: self.prog,
+            object: out,
+        })
+    }
+
+    pub fn to_num(&self) -> Result<u64> {
+        let out: u64 = 0;
+        let ret = unsafe { obj2num(self.object, &out as *const u64) };
+        if ret {
+            return Ok(out);
+        }
+
+        Err(())
+    }
+}
+
+impl Drop for Object {
+    fn drop(&mut self) {
+        unsafe {
+            object_free(self.object);
+        }
     }
 }
