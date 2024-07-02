@@ -1,21 +1,31 @@
 use drgn_knight::*;
 
-fn find_member(task: &Object, path: String) {
-    if let Ok(obj) = task.deref_member(path.clone()) {
-        if let Ok(n) = obj.to_num() {
-            println!("Find {}: {:x}", path, n);
-        } else {
-            println!("Find {} to_num failed", path);
-        }
+fn find_member(obj: &Object, path: String) {
+    let obj = obj.deref_member(path.clone());
+    if obj.is_err() {
+        println!("Can't find {path} under the given object");
+        return;
+    }
+
+    let obj = obj.unwrap();
+    if let Ok(n) = obj.to_num() {
+        println!("Get {}: {:x}", path, n);
     } else {
-        println!("Find {} to_num failed", path);
+        println!("Traslate {} to_num failed", path);
     }
 }
 
 fn main() {
     let prog = Program::new();
 
-    let task = prog.find_task(1);
+    let pid = 1;
+    let task = prog.find_task(pid);
+    if task.is_err() {
+        println!("Can't find task with pid {pid}");
+        return;
+    }
+
+    let task = task.unwrap();
     find_member(&task, "on_cpu".to_string());
     find_member(&task, "pid".to_string());
     find_member(&task, "se".to_string());

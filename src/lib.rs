@@ -27,8 +27,12 @@ impl Program {
         Program { prog }
     }
 
-    pub fn find_task(&self, pid: u64) -> Object {
-        Object::new(self.prog, unsafe { find_task(self.prog, pid) })
+    pub fn find_task(&self, pid: u64) -> Result<Object> {
+        let out = unsafe { find_task(self.prog, pid) };
+        if out.is_null() {
+            return Err(());
+        }
+        Ok(Object::new(self.prog, out))
     }
 }
 
@@ -49,6 +53,7 @@ pub struct Object {
 
 impl Object {
     pub fn new(prog: *const c_void, object: *const c_void) -> Self {
+        assert!(!prog.is_null() && !object.is_null());
         Object { prog, object }
     }
 
@@ -60,10 +65,7 @@ impl Object {
             return Err(());
         }
 
-        Ok(Object {
-            prog: self.prog,
-            object: out,
-        })
+        Ok(Object::new(self.prog, out))
     }
 
     pub fn to_num(&self) -> Result<u64> {
