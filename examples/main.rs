@@ -9,7 +9,8 @@ fn find_member(obj: &Object, path: String) {
 
     let obj = obj.unwrap();
     if let Ok(n) = obj.to_num() {
-        println!("Get {}: {:x}", path, n);
+        let addr = obj.address_of().unwrap();
+        println!("Get {}: {:x}@{addr:x}", path, n);
     } else {
         println!("Traslate {} to_num failed", path);
     }
@@ -26,6 +27,9 @@ fn main() {
     }
 
     let task = task.unwrap();
+    let addr = task.to_num().unwrap();
+    println!("Get task@{addr:x}");
+
     find_member(&task, "on_cpu".to_string());
     find_member(&task, "pid".to_string());
     find_member(&task, "se".to_string());

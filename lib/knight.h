@@ -14,6 +14,7 @@ void object_free(struct drgn_object *obj);
 
 struct drgn_object *find_task(prog_t *p, uint64_t pid);
 struct drgn_object *deref_obj_member(struct drgn_object *obj, char *name);
+bool obj_addr(struct drgn_object *obj, uint64_t *out);
 bool obj2num(struct drgn_object *obj, uint64_t *out);
 
 #endif

@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -126,6 +127,23 @@ struct drgn_object *deref_obj_member(struct drgn_object *obj, char *name)
     }
 
     return member;
+}
+
+bool obj_addr(struct drgn_object *obj, uint64_t *out)
+{
+    struct drgn_program *prog = drgn_object_program(obj);
+    struct drgn_error *err = NULL;
+    DRGN_OBJECT(addr_obj, prog);
+
+    err = drgn_object_address_of(&addr_obj, obj);
+
+    if (err) {
+        drgn_error_fwrite(stderr, err);
+        drgn_error_destroy(err);
+        return false;
+    }
+
+    return obj2num(&addr_obj, out);
 }
 
 bool obj2num(struct drgn_object *obj, uint64_t *out)

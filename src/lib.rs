@@ -7,6 +7,7 @@ extern "C" {
     fn object_free(obj: *const c_void);
     fn find_task(prog: *const c_void, pid: u64) -> *const c_void;
     fn deref_obj_member(obj: *const c_void, name: *const c_char) -> *const c_void;
+    fn obj_addr(obj: *const c_void, out: *const u64) -> bool;
     fn obj2num(obj: *const c_void, out: *const u64) -> bool;
 }
 
@@ -61,6 +62,16 @@ impl Object {
         }
 
         Ok(Object::new(out))
+    }
+
+    pub fn address_of(&self) -> Result<u64> {
+        let out: u64 = 0;
+        let ret = unsafe { obj_addr(self.object, &out as *const u64) };
+        if ret {
+            return Ok(out);
+        }
+
+        Err(())
     }
 
     pub fn to_num(&self) -> Result<u64> {
