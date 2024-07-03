@@ -6,11 +6,7 @@ extern "C" {
     fn program_destroy(prog: *const c_void);
     fn object_free(obj: *const c_void);
     fn find_task(prog: *const c_void, pid: u64) -> *const c_void;
-    fn deref_obj_member(
-        prog: *const c_void,
-        obj: *const c_void,
-        name: *const c_char,
-    ) -> *const c_void;
+    fn deref_obj_member(obj: *const c_void, name: *const c_char) -> *const c_void;
     fn obj2num(obj: *const c_void, out: *const u64) -> bool;
 }
 
@@ -32,7 +28,7 @@ impl Program {
         if out.is_null() {
             return Err(());
         }
-        Ok(Object::new(self.prog, out))
+        Ok(Object::new(out))
     }
 }
 
@@ -47,25 +43,24 @@ impl Drop for Program {
 type Result<T> = std::result::Result<T, ()>;
 
 pub struct Object {
-    prog: *const c_void,
     object: *const c_void,
 }
 
 impl Object {
-    pub fn new(prog: *const c_void, object: *const c_void) -> Self {
-        assert!(!prog.is_null() && !object.is_null());
-        Object { prog, object }
+    pub fn new(object: *const c_void) -> Self {
+        assert!(!object.is_null());
+        Object { object }
     }
 
     pub fn deref_member(&self, member: String) -> Result<Object> {
         let member_cstr = CString::new(member).unwrap();
-        let out = unsafe { deref_obj_member(self.prog, self.object, member_cstr.as_ptr()) };
+        let out = unsafe { deref_obj_member(self.object, member_cstr.as_ptr()) };
 
         if out.is_null() {
             return Err(());
         }
 
-        Ok(Object::new(self.prog, out))
+        Ok(Object::new(out))
     }
 
     pub fn to_num(&self) -> Result<u64> {
