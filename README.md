@@ -14,3 +14,10 @@ $ sudo apt install autoconf automake check gcc git liblzma-dev libelf-dev libdw-
 The vmlinux file for you kernel is required for the debug information. Reading
 [Getting Debugging Symbols](https://github.com/osandov/drgn/blob/main/docs/getting_debugging_symbols.rst)
 to know how you can get it.
+
+### drgn-knight
+
+```
+$ git submodule update --init
+$ make
+```
