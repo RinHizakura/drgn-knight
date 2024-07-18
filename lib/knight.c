@@ -68,6 +68,8 @@ static struct drgn_object *object_alloc(struct drgn_program *prog)
 
 void object_free(struct drgn_object *obj)
 {
+    if (obj == NULL)
+        return;
     drgn_object_deinit(obj);
     free(obj);
 }

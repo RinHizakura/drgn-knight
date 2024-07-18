@@ -1,4 +1,7 @@
-use std::ffi::{c_char, c_void, CString};
+use std::{
+    ffi::{c_char, c_void, CString},
+    ptr::null,
+};
 
 #[link(name = "drgnimpl", kind = "static")]
 extern "C" {
@@ -53,15 +56,15 @@ impl Object {
         Object { object }
     }
 
-    pub fn deref_member(&self, member: String) -> Result<Object> {
+    pub fn deref_member(&self, member: &str) -> Option<Object> {
         let member_cstr = CString::new(member).unwrap();
         let out = unsafe { deref_obj_member(self.object, member_cstr.as_ptr()) };
 
         if out.is_null() {
-            return Err(());
+            return None;
         }
 
-        Ok(Object::new(out))
+        Some(Object::new(out))
     }
 
     pub fn address_of(&self) -> Result<u64> {
@@ -82,6 +85,12 @@ impl Object {
         }
 
         Err(())
+    }
+}
+
+impl Default for Object {
+    fn default() -> Self {
+        Object { object: null() }
     }
 }
 

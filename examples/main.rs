@@ -1,18 +1,130 @@
 use drgn_knight::*;
 
-fn find_member(obj: &Object, path: String) {
-    let obj = obj.deref_member(path.clone());
-    if obj.is_err() {
-        println!("Can't find {path} under the given object");
-        return;
+enum Token {
+    Member(String),
+    Access,
+    Deref,
+}
+
+/* FIXME: This is an ugly lexer for the C structure experssion :( */
+struct Lexer {
+    s: String,
+    pos: usize,
+    len: usize,
+}
+
+impl Lexer {
+    pub fn new(s: String) -> Self {
+        let l = s.len();
+        Lexer {
+            s: s,
+            pos: 0,
+            len: l,
+        }
     }
 
-    let obj = obj.unwrap();
-    if let Ok(n) = obj.to_num() {
-        let addr = obj.address_of().unwrap();
-        println!("Get {}: {:x}@{addr:x}", path, n);
+    pub fn next_token(&mut self) -> Option<Token> {
+        let s = self.s.as_bytes();
+
+        while self.pos < self.len {
+            let c = s[self.pos] as u8;
+            self.pos += 1;
+            match c {
+                b'.' => return Some(Token::Access),
+                b'-' => {
+                    if self.pos >= self.len || s[self.pos] != b'>' {
+                        return None;
+                    }
+                    self.pos += 1;
+                    return Some(Token::Deref);
+                }
+                _ => {
+                    let start = self.pos - 1;
+
+                    while self.pos < self.len {
+                        let c = s[self.pos];
+                        if c == b'.' || c == b'-' {
+                            break;
+                        }
+                        self.pos += 1;
+                    }
+
+                    return Some(Token::Member(self.s[start..self.pos].to_string()));
+                }
+            }
+        }
+
+        None
+    }
+}
+
+fn find_member(obj: &Object, path: &str) -> Option<Object> {
+    let mut lexer = Lexer::new(path.to_string());
+    let mut prev_token = 0;
+
+    if let Some(token) = lexer.next_token() {
+        /* The first token should not be Token::Member */
+        match token {
+            Token::Access => prev_token = 1,
+            Token::Deref => prev_token = 2,
+            _ => return None,
+        }
+    }
+
+    let mut cur_obj = Object::default();
+    if let Some(token) = lexer.next_token() {
+        /* The Second token should be Token::Member */
+        match token {
+            Token::Member(member) => {
+                if prev_token == 1 {
+                    todo!()
+                } else {
+                    cur_obj = obj.deref_member(&member)?;
+                }
+            }
+            _ => return None,
+        }
+        prev_token = 0;
+    }
+
+    while let Some(token) = lexer.next_token() {
+        match token {
+            Token::Member(member) => {
+                if prev_token == 0 {
+                    return None;
+                }
+
+                if prev_token == 1 {
+                    todo!()
+                } else {
+                    cur_obj = cur_obj.deref_member(&member)?;
+                }
+
+                prev_token = 0;
+            }
+            Token::Access => {
+                if prev_token != 0 {
+                    return None;
+                }
+                prev_token = 1;
+            }
+            Token::Deref => {
+                if prev_token != 0 {
+                    return None;
+                }
+                prev_token = 2;
+            }
+        }
+    }
+
+    Some(cur_obj)
+}
+
+fn print_obj(obj: &Object, path: String) {
+    if let Some(obj) = find_member(obj, &path) {
+        println!("{path}: {:x?}", obj.to_num());
     } else {
-        println!("Traslate {} to_num failed", path);
+        println!("{path} is invalid");
     }
 }
 
@@ -30,7 +142,8 @@ fn main() {
     let addr = task.to_num().unwrap();
     println!("Get task@{addr:x}");
 
-    find_member(&task, "on_cpu".to_string());
-    find_member(&task, "pid".to_string());
-    find_member(&task, "se".to_string());
+    print_obj(&task, "->on_cpu".to_string());
+    print_obj(&task, "->pid".to_string());
+    print_obj(&task, "->se".to_string());
+    print_obj(&task, "->se.min_vruntime".to_string());
 }
