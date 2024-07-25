@@ -1,5 +1,11 @@
 # drgn-knight
 
+## Introduction
+
+drgn-knight is a Rust library which enable to access kernel object through
+"/proc/kcore". It is built on top of [drgn](https://github.com/osandov/drgn)
+with only a restricted set of interfaces.
+
 ## Build
 
 ### drgn
