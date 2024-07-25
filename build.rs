@@ -1,4 +1,5 @@
 extern crate cc;
+use std::path::PathBuf;
 use std::process::Command;
 
 fn main() {
@@ -10,7 +11,9 @@ fn main() {
     assert!(output.status.success());
 
     // Add current path to search the static library
-    println!("cargo:rustc-link-search=.");
+    let path = PathBuf::from("build.rs").canonicalize().unwrap();
+    let parent = path.parent().unwrap().to_str().unwrap();
+    println!("cargo:rustc-link-search=native={parent}");
 
     // Add shared library(.so)
     println!("cargo:rustc-link-lib=gomp");
