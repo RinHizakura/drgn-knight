@@ -9,6 +9,7 @@ extern "C" {
     fn program_destroy(prog: *const c_void);
     fn object_free(obj: *const c_void);
     fn find_task(prog: *const c_void, pid: u64) -> *const c_void;
+    fn get_obj_member(obj: *const c_void, name: *const c_char) -> *const c_void;
     fn deref_obj_member(obj: *const c_void, name: *const c_char) -> *const c_void;
     fn obj_addr(obj: *const c_void, out: *const u64) -> bool;
     fn obj2num(obj: *const c_void, out: *const u64) -> bool;
@@ -54,6 +55,17 @@ impl Object {
     pub fn new(object: *const c_void) -> Self {
         assert!(!object.is_null());
         Object { object }
+    }
+
+    pub fn member(&self, member: &str) -> Option<Object> {
+        let member_cstr = CString::new(member).unwrap();
+        let out = unsafe { get_obj_member(self.object, member_cstr.as_ptr()) };
+
+        if out.is_null() {
+            return None;
+        }
+
+        Some(Object::new(out))
     }
 
     pub fn deref_member(&self, member: &str) -> Option<Object> {

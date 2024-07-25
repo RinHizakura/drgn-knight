@@ -95,7 +95,7 @@ fn find_member(obj: &Object, path: &str) -> Option<Object> {
                 }
 
                 if prev_token == 1 {
-                    todo!()
+                    cur_obj = cur_obj.member(&member)?;
                 } else {
                     cur_obj = cur_obj.deref_member(&member)?;
                 }
@@ -145,5 +145,5 @@ fn main() {
     print_obj(&task, "->on_cpu".to_string());
     print_obj(&task, "->pid".to_string());
     print_obj(&task, "->se".to_string());
-    print_obj(&task, "->se.min_vruntime".to_string());
+    print_obj(&task, "->se.vruntime".to_string());
 }

@@ -114,6 +114,23 @@ struct drgn_object *find_task(prog_t *p, uint64_t pid)
     return task;
 }
 
+struct drgn_object *get_obj_member(struct drgn_object *obj, char *name)
+{
+    struct drgn_program *prog = drgn_object_program(obj);
+    struct drgn_object *member = object_alloc(prog);
+    struct drgn_error *err = NULL;
+
+    err = drgn_object_member(member, obj, name);
+    if (err) {
+        drgn_error_fwrite(stderr, err);
+        drgn_error_destroy(err);
+        object_free(member);
+        return NULL;
+    }
+
+    return member;
+}
+
 struct drgn_object *deref_obj_member(struct drgn_object *obj, char *name)
 {
     struct drgn_program *prog = drgn_object_program(obj);
