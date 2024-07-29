@@ -1,16 +1,9 @@
 extern crate cc;
 use std::path::PathBuf;
-use std::process::Command;
 
 fn main() {
-    // Build libdrgnimpl with the simple script
-    let output = Command::new("scripts/build-drgn.sh")
-        .output()
-        .expect("Failed to build libdrgnimpl");
-
-    assert!(output.status.success());
-
-    // Add libdrgn path to search the static library
+    /* Assume libdrgn.a is exist in the specific path and it to
+     * search for static library */
     let path = PathBuf::from("drgn/libdrgn/.libs").canonicalize().unwrap();
     let path = path.to_str().unwrap();
     println!("cargo:rustc-link-search=native={path}");
