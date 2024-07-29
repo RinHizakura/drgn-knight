@@ -3,6 +3,9 @@ use std::{
     ptr::null,
 };
 
+use anyhow::Result;
+use anyhow::anyhow;
+
 #[link(name = "drgnimpl", kind = "static")]
 extern "C" {
     fn program_create() -> *const c_void;
@@ -31,7 +34,7 @@ impl Program {
     pub fn find_task(&self, pid: u64) -> Result<Object> {
         let out = unsafe { find_task(self.prog, pid) };
         if out.is_null() {
-            return Err(());
+            return Err(anyhow!("Fail to find_task from pid {pid}"));
         }
         Ok(Object::new(out))
     }
@@ -44,8 +47,6 @@ impl Drop for Program {
         }
     }
 }
-
-type Result<T> = std::result::Result<T, ()>;
 
 pub struct Object {
     object: *const c_void,
@@ -86,7 +87,7 @@ impl Object {
             return Ok(out);
         }
 
-        Err(())
+        Err(anyhow!("address of object is unknown"))
     }
 
     pub fn to_num(&self) -> Result<u64> {
@@ -96,7 +97,7 @@ impl Object {
             return Ok(out);
         }
 
-        Err(())
+        Err(anyhow!("object can't convert to number"))
     }
 }
 
