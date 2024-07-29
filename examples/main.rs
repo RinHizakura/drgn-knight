@@ -60,33 +60,19 @@ impl Lexer {
 
 fn find_member(obj: &Object, path: &str) -> Option<Object> {
     let mut lexer = Lexer::new(path.to_string());
-    let mut prev_token = 0;
 
-    if let Some(token) = lexer.next_token() {
-        /* The first token should not be Token::Member */
-        match token {
-            Token::Access => prev_token = 1,
-            Token::Deref => prev_token = 2,
-            _ => return None,
-        }
-    }
-
+    /* The First token should be Token::Member */
     let mut cur_obj = Object::default();
     if let Some(token) = lexer.next_token() {
-        /* The Second token should be Token::Member */
         match token {
             Token::Member(member) => {
-                if prev_token == 1 {
-                    cur_obj = cur_obj.member(&member)?;
-                } else {
-                    cur_obj = obj.deref_member(&member)?;
-                }
+                cur_obj = obj.deref_member(&member)?;
             }
             _ => return None,
         }
-        prev_token = 0;
     }
 
+    let mut prev_token = 0;
     while let Some(token) = lexer.next_token() {
         match token {
             Token::Member(member) => {
@@ -142,8 +128,8 @@ fn main() {
     let addr = task.to_num().unwrap();
     println!("Get task@{addr:x}");
 
-    print_obj(&task, "->on_cpu".to_string());
-    print_obj(&task, "->pid".to_string());
-    print_obj(&task, "->se".to_string());
-    print_obj(&task, "->se.vruntime".to_string());
+    print_obj(&task, "on_cpu".to_string());
+    print_obj(&task, "pid".to_string());
+    print_obj(&task, "se".to_string());
+    print_obj(&task, "se.vruntime".to_string());
 }
