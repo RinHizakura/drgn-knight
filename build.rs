@@ -10,10 +10,10 @@ fn main() {
 
     assert!(output.status.success());
 
-    // Add current path to search the static library
-    let path = PathBuf::from("build.rs").canonicalize().unwrap();
-    let parent = path.parent().unwrap().to_str().unwrap();
-    println!("cargo:rustc-link-search=native={parent}");
+    // Add libdrgn path to search the static library
+    let path = PathBuf::from("drgn/libdrgn/.libs").canonicalize().unwrap();
+    let path = path.to_str().unwrap();
+    println!("cargo:rustc-link-search=native={path}");
 
     // Add shared library(.so)
     println!("cargo:rustc-link-lib=gomp");
