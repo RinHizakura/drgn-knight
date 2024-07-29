@@ -3,8 +3,8 @@ use std::{
     ptr::null,
 };
 
-use anyhow::Result;
 use anyhow::anyhow;
+use anyhow::Result;
 
 #[link(name = "drgnimpl", kind = "static")]
 extern "C" {
