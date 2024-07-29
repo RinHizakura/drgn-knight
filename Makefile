@@ -4,8 +4,10 @@ LIBDRGN_A = $(LIBDRGN)/.libs/libdrgn.a
 
 all: build
 
-build: $(LIBDRGN_A)
+build:
 	cargo build
+
+libdrgn_a: $(LIBDRGN_A)
 
 $(LIBDRGN_MAKE): $(LIBDRGN_CONF)
 	git submodule update --init
