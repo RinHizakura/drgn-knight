@@ -77,7 +77,7 @@ fn find_member(obj: &Object, path: &str) -> Option<Object> {
         match token {
             Token::Member(member) => {
                 if prev_token == 1 {
-                    todo!()
+                    cur_obj = cur_obj.member(&member)?;
                 } else {
                     cur_obj = obj.deref_member(&member)?;
                 }
