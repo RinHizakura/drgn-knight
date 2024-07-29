@@ -1,6 +1,7 @@
 all: build
 
 build:
+	git submodule update --init
 	cargo build
 
 clean:
