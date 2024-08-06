@@ -22,7 +22,7 @@ fn main() {
     println!("cargo:rustc-link-lib=gomp");
     println!("cargo:rustc-link-lib=dw");
     println!("cargo:rustc-link-lib=elf");
-    if pkg_config::probe_library("kdumpfile").is_ok() {
+    if pkg_config::probe_library("libkdumpfile").is_ok() {
         println!("cargo:rustc-link-lib=kdumpfile");
     }
 
