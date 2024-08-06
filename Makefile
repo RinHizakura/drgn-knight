@@ -21,8 +21,3 @@ $(LIBDRGN_A): $(LIBDRGN_MAKE)
 clean:
 	make -C $(LIBDRGN) clean
 	cargo clean
-
-run: build
-	cargo b --example main
-	sudo target/debug/examples/main
-
