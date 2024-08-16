@@ -1,3 +1,4 @@
 /target
 build
 *.a
+Cargo.lock

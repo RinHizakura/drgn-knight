@@ -2,15 +2,20 @@ extern crate cc;
 extern crate pkg_config;
 
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 fn main() {
+    let arch = build_target::target_arch().unwrap();
+
     /* Build libdrgn.a */
     let output = Command::new("make")
         .arg("libdrgn_a")
+        .arg(format!("ARCH={arch}"))
+        .stdout(Stdio::piped())
         .output()
         .expect("Failed to build libdrgnimpl");
 
+    println!("{}", String::from_utf8(output.stderr).unwrap());
     assert!(output.status.success());
 
     /* Find libdrgn.a in the specific path */
