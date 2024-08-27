@@ -114,13 +114,55 @@ struct drgn_object *find_task(prog_t *p, uint64_t pid)
     return task;
 }
 
+static struct drgn_error *__get_obj_member(struct drgn_object *obj,
+                                           char *name,
+                                           struct drgn_object *ret_member)
+{
+    struct drgn_error *err;
+    err = drgn_object_member(ret_member, obj, name);
+    if (err)
+        return err;
+
+    return err;
+}
+
+static struct drgn_error *__deref_obj_member(struct drgn_object *obj,
+                                             char *name,
+                                             struct drgn_object *ret_member)
+{
+    struct drgn_error *err = NULL;
+    err = drgn_object_member_dereference(ret_member, obj, name);
+    if (err)
+        return err;
+
+    return err;
+}
+
+struct drgn_object *find_object_variable(prog_t *p, char *name)
+{
+    struct drgn_error *err = NULL;
+    struct drgn_program *prog = p->prog;
+    struct drgn_object *object = object_alloc(prog);
+
+    err = drgn_program_find_object(prog, name, NULL,
+                                   DRGN_FIND_OBJECT_VARIABLE, object);
+    if (err) {
+        drgn_error_fwrite(stderr, err);
+        drgn_error_destroy(err);
+        object_free(object);
+        return NULL;
+    }
+
+    return object;
+}
+
 struct drgn_object *get_obj_member(struct drgn_object *obj, char *name)
 {
     struct drgn_program *prog = drgn_object_program(obj);
     struct drgn_object *member = object_alloc(prog);
     struct drgn_error *err = NULL;
 
-    err = drgn_object_member(member, obj, name);
+    err = __get_obj_member(obj, name, member);
     if (err) {
         drgn_error_fwrite(stderr, err);
         drgn_error_destroy(err);
@@ -137,7 +179,7 @@ struct drgn_object *deref_obj_member(struct drgn_object *obj, char *name)
     struct drgn_object *member = object_alloc(prog);
     struct drgn_error *err = NULL;
 
-    err = drgn_object_member_dereference(member, obj, name);
+    err = __deref_obj_member(obj, name, member);
     if (err) {
         drgn_error_fwrite(stderr, err);
         drgn_error_destroy(err);
@@ -146,6 +188,34 @@ struct drgn_object *deref_obj_member(struct drgn_object *obj, char *name)
     }
 
     return member;
+}
+
+struct drgn_object *container_of(struct drgn_object *ptr,
+	char *type, char *member)
+{
+    struct drgn_program *prog = drgn_object_program(ptr);
+    struct drgn_object *object = NULL;
+    struct drgn_error *err = NULL;
+    struct drgn_qualified_type qtype;
+
+    err = drgn_program_find_type(prog, type, NULL, &qtype);
+    if (err)
+        goto container_of_end;
+
+    object = object_alloc(prog);
+    err = drgn_object_container_of(object, ptr, qtype, member);
+    if (err)
+        goto container_of_end;
+
+container_of_end:
+    if (err) {
+        drgn_error_fwrite(stderr, err);
+        drgn_error_destroy(err);
+        object_free(object);
+        return NULL;
+    }
+
+    return object;
 }
 
 bool obj_addr(struct drgn_object *obj, uint64_t *out)
@@ -183,5 +253,19 @@ bool obj2num(struct drgn_object *obj, uint64_t *out)
     *out = value->uvalue;
 
     drgn_object_deinit_value(obj, value);
+    return true;
+}
+
+bool obj2cstr(struct drgn_object *obj, char **out)
+{
+    struct drgn_error *err = NULL;
+
+    err = drgn_object_read_c_string(obj, out);
+    if (err) {
+        drgn_error_fwrite(stderr, err);
+        drgn_error_destroy(err);
+        return false;
+    }
+
     return true;
 }

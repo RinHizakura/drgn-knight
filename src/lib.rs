@@ -1,10 +1,13 @@
 use std::{
     ffi::{c_char, c_void, CString},
-    ptr::null,
+    ptr::{self, null},
 };
 
 use anyhow::anyhow;
 use anyhow::Result;
+
+#[macro_use]
+extern crate num_derive;
 
 #[link(name = "drgnimpl", kind = "static")]
 extern "C" {
@@ -12,14 +15,25 @@ extern "C" {
     fn program_destroy(prog: *const c_void);
     fn object_free(obj: *const c_void);
     fn find_task(prog: *const c_void, pid: u64) -> *const c_void;
+    fn find_object_variable(prog: *const c_void, name: *const c_char) -> *const c_void;
     fn get_obj_member(obj: *const c_void, name: *const c_char) -> *const c_void;
     fn deref_obj_member(obj: *const c_void, name: *const c_char) -> *const c_void;
     fn obj_addr(obj: *const c_void, out: *const u64) -> bool;
     fn obj2num(obj: *const c_void, out: *const u64) -> bool;
+    fn obj2cstr(obj: *const c_void, out: *const *mut c_char) -> bool;
+    fn container_of(ptr: *const c_void, typ: *const c_char, member: *const c_char)
+        -> *const c_void;
 }
 
 pub struct Program {
     prog: *const c_void,
+}
+
+#[derive(FromPrimitive, Debug, Clone, Copy)]
+pub enum BusType {
+    BusPci = 0,
+    BusUsb,
+    BusPlatform,
 }
 
 impl Program {
@@ -35,6 +49,15 @@ impl Program {
         let out = unsafe { find_task(self.prog, pid) };
         if out.is_null() {
             return Err(anyhow!("Fail to find_task from pid {pid}"));
+        }
+        Ok(Object::new(out))
+    }
+
+    pub fn find_object_variable(&self, name: &str) -> Result<Object> {
+        let name_cstr = CString::new(name).unwrap();
+        let out = unsafe { find_object_variable(self.prog, name_cstr.as_ptr()) };
+        if out.is_null() {
+            return Err(anyhow!("Fail to object which has name {name}"));
         }
         Ok(Object::new(out))
     }
@@ -99,6 +122,17 @@ impl Object {
 
         Err(anyhow!("object can't convert to number"))
     }
+
+    pub fn to_str(&self) -> Result<String> {
+        let buf: *mut c_char = ptr::null_mut();
+        let ret = unsafe { obj2cstr(self.object, &buf as *const *mut c_char) };
+        if ret {
+            let cstr = unsafe { CString::from_raw(buf) };
+            return Ok(cstr.into_string()?);
+        }
+
+        Err(anyhow!("object can't convert to string"))
+    }
 }
 
 impl Default for Object {
@@ -112,5 +146,38 @@ impl Drop for Object {
         unsafe {
             object_free(self.object);
         }
+    }
+}
+
+pub struct List {
+    head: Object,
+    typ: CString,
+    member: CString,
+    pos: Option<*const c_void>,
+}
+
+impl List {
+    pub fn new(head: Object, typ: &str, member: &str) -> Self {
+        List {
+            head,
+            typ: CString::new(typ).expect("Invalid typ to List"),
+            member: CString::new(member).expect("Invalid member to List"),
+            pos: None,
+        }
+    }
+}
+
+impl Iterator for List {
+    type Item = Object;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.pos.is_none() {
+            let next = self.head.member("next")?;
+            let obj = unsafe { container_of(next.object, self.typ.as_ptr(), self.member.as_ptr()) };
+            self.pos = Some(obj);
+            return Some(Object::new(obj));
+        }
+
+        None
     }
 }
