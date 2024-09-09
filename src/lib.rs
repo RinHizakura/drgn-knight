@@ -1,13 +1,9 @@
 use std::{
-    ffi::{c_char, c_void, CString},
-    ptr::{self, null},
+    ffi::{c_char, c_void, CString}, ptr::{self, null}
 };
 
 use anyhow::anyhow;
 use anyhow::Result;
-
-#[macro_use]
-extern crate num_derive;
 
 #[link(name = "drgnimpl", kind = "static")]
 extern "C" {
@@ -18,7 +14,7 @@ extern "C" {
     fn find_object_variable(prog: *const c_void, name: *const c_char) -> *const c_void;
     fn get_obj_member(obj: *const c_void, name: *const c_char) -> *const c_void;
     fn deref_obj_member(obj: *const c_void, name: *const c_char) -> *const c_void;
-    fn obj_addr(obj: *const c_void, out: *const u64) -> bool;
+    fn address_of(obj: *const c_void) -> *const c_void;
     fn obj2num(obj: *const c_void, out: *const u64) -> bool;
     fn obj2cstr(obj: *const c_void, out: *const *mut c_char) -> bool;
     fn container_of(ptr: *const c_void, typ: *const c_char, member: *const c_char)
@@ -27,13 +23,6 @@ extern "C" {
 
 pub struct Program {
     prog: *const c_void,
-}
-
-#[derive(FromPrimitive, Debug, Clone, Copy)]
-pub enum BusType {
-    BusPci = 0,
-    BusUsb,
-    BusPlatform,
 }
 
 impl Program {
@@ -103,14 +92,14 @@ impl Object {
         Some(Object::new(out))
     }
 
-    pub fn address_of(&self) -> Result<u64> {
-        let out: u64 = 0;
-        let ret = unsafe { obj_addr(self.object, &out as *const u64) };
-        if ret {
-            return Ok(out);
+    pub fn address_of(&self) -> Option<Object> {
+        let out = unsafe { address_of(self.object) };
+
+        if out.is_null() {
+            return None;
         }
 
-        Err(anyhow!("address of object is unknown"))
+        Some(Object::new(out))
     }
 
     pub fn to_num(&self) -> Result<u64> {
@@ -150,19 +139,24 @@ impl Drop for Object {
 }
 
 pub struct List {
-    head: Object,
+    pos: Object,
     typ: CString,
     member: CString,
-    pos: Option<*const c_void>,
+    head: u64,
+    cnt: usize,
 }
 
 impl List {
     pub fn new(head: Object, typ: &str, member: &str) -> Self {
+        let head = head.address_of().unwrap();
+        let head_addr = head.to_num().unwrap();
+
         List {
-            head,
+            pos: head,
             typ: CString::new(typ).expect("Invalid typ to List"),
             member: CString::new(member).expect("Invalid member to List"),
-            pos: None,
+            head: head_addr,
+            cnt: 0,
         }
     }
 }
@@ -171,13 +165,16 @@ impl Iterator for List {
     type Item = Object;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.pos.is_none() {
-            let next = self.head.member("next")?;
-            let obj = unsafe { container_of(next.object, self.typ.as_ptr(), self.member.as_ptr()) };
-            self.pos = Some(obj);
-            return Some(Object::new(obj));
+        let next = self.pos.deref_member("next")?;
+        if next.to_num().unwrap() as u64 == self.head {
+            return None;
         }
 
-        None
+        self.pos = next;
+        self.cnt += 1;
+        let obj = unsafe { container_of(self.pos.object,
+                                        self.typ.as_ptr(),
+                                        self.member.as_ptr()) };
+        return Some(Object::new(obj));
     }
 }

@@ -218,21 +218,22 @@ container_of_end:
     return object;
 }
 
-bool obj_addr(struct drgn_object *obj, uint64_t *out)
+struct drgn_object *address_of(struct drgn_object *obj)
 {
     struct drgn_program *prog = drgn_object_program(obj);
     struct drgn_error *err = NULL;
-    DRGN_OBJECT(addr_obj, prog);
+    struct drgn_object *addr_obj = object_alloc(prog);
 
-    err = drgn_object_address_of(&addr_obj, obj);
+    err = drgn_object_address_of(addr_obj, obj);
 
     if (err) {
         drgn_error_fwrite(stderr, err);
         drgn_error_destroy(err);
-        return false;
+        object_free(addr_obj);
+        return NULL;
     }
 
-    return obj2num(&addr_obj, out);
+    return addr_obj;
 }
 
 bool obj2num(struct drgn_object *obj, uint64_t *out)

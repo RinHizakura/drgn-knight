@@ -23,7 +23,7 @@ struct drgn_object *find_object_variable(prog_t *p, char *name);
 struct drgn_object *get_obj_member(struct drgn_object *obj, char *name);
 struct drgn_object *deref_obj_member(struct drgn_object *obj, char *name);
 struct drgn_object *container_of(struct drgn_object *ptr, char *type, char *member);
-bool obj_addr(struct drgn_object *obj, uint64_t *out);
+struct drgn_object *address_of(struct drgn_object *obj);
 bool obj2num(struct drgn_object *obj, uint64_t *out);
 bool obj2cstr(struct drgn_object *obj, char **out);
 
