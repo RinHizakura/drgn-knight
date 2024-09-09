@@ -1,5 +1,6 @@
 use std::{
-    ffi::{c_char, c_void, CString}, ptr::{self, null}
+    ffi::{c_char, c_void, CString},
+    ptr::{self, null},
 };
 
 use anyhow::anyhow;
@@ -172,9 +173,7 @@ impl Iterator for List {
 
         self.pos = next;
         self.cnt += 1;
-        let obj = unsafe { container_of(self.pos.object,
-                                        self.typ.as_ptr(),
-                                        self.member.as_ptr()) };
+        let obj = unsafe { container_of(self.pos.object, self.typ.as_ptr(), self.member.as_ptr()) };
         return Some(Object::new(obj));
     }
 }
