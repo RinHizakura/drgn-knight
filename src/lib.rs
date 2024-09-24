@@ -97,8 +97,7 @@ impl Object {
         let typ = CString::new(typ).expect("Invalid typ");
         let member = CString::new(member).expect("Invalid member");
 
-        let out = unsafe { container_of(self.object, typ.as_ptr(),
-                        member.as_ptr()) };
+        let out = unsafe { container_of(self.object, typ.as_ptr(), member.as_ptr()) };
 
         if out.is_null() {
             return None;
