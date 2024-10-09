@@ -18,27 +18,18 @@ else
     $(error "Non-supported ARCH=$(ARCH)")
 endif
 
-LIBDRGN = $(abspath drgn/libdrgn)
-LIBDRGN_MAKE = $(LIBDRGN)/Makefile
-LIBDRGN_A = $(LIBDRGN)/.libs/libdrgn.a
-
 all: build
 
 build:
 	$(EXPORT_PATH) cargo build $(CARGO_OPT)
 
-libdrgn_a: $(LIBDRGN_A)
-
-$(LIBDRGN_MAKE):
+LIBDRGN = $(abspath drgn/libdrgn)
+libdrgn_a:
 	git submodule update --init
-	cd $(LIBDRGN);    \
-	autoreconf -i -f; \
-	./configure $(HOST_OPT)
-
-$(LIBDRGN_A): $(LIBDRGN_MAKE)
-	cd $(LIBDRGN); make
+	cd $(LIBDRGN);           \
+	autoreconf -i -f;        \
+	./configure $(HOST_OPT); \
+	make clean; make -j$(nporc)
 
 clean:
-	make -C $(LIBDRGN) clean
-	rm -rf $(LIBDRGN_MAKE)
 	cargo clean

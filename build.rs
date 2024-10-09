@@ -1,22 +1,37 @@
 extern crate cc;
 extern crate pkg_config;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 fn main() {
     let arch = build_target::target_arch().unwrap();
 
     /* Build libdrgn.a */
-    let output = Command::new("make")
-        .arg("libdrgn_a")
-        .arg(format!("ARCH={arch}"))
-        .stdout(Stdio::piped())
-        .output()
-        .expect("Failed to build libdrgnimpl");
+    let outdir = std::env::var_os("OUT_DIR").unwrap();
+    let outdir_str = outdir.to_str().unwrap();
+    let out_libdrgn = format!("{outdir_str}/libdrgn.a");
+    if !Path::new(&out_libdrgn).exists() {
+        let output = Command::new("make")
+            .arg("libdrgn_a")
+            .arg(format!("ARCH={arch}"))
+            .stdout(Stdio::piped())
+            .output()
+            .expect("Failed to build libdrgnimpl");
 
-    println!("{}", String::from_utf8(output.stderr).unwrap());
-    assert!(output.status.success());
+        println!("{}", String::from_utf8(output.stderr).unwrap());
+        assert!(output.status.success());
+
+        // Create a file as footprint
+        let output = Command::new("touch")
+            .arg(&out_libdrgn)
+            .stdout(Stdio::piped())
+            .output()
+            .expect("Failed to create libdrgn.a");
+
+        println!("{}", String::from_utf8(output.stderr).unwrap());
+        assert!(output.status.success());
+    }
 
     /* Find libdrgn.a in the specific path */
     let path = PathBuf::from("drgn/libdrgn/.libs").canonicalize().unwrap();
